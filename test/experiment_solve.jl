@@ -1,9 +1,3 @@
-using Symbolics
-using DoubleQuack
-
-include("utils.jl")
-
-
 function run_experiment_solve(p, ds, vs; iterations)
     quack = DoubleQuack.quack_oracle(p, ds, vs)
     pure, prob, _ = DoubleQuack.fixed_iters(quack, iterations)
@@ -22,4 +16,6 @@ domains = (dom1, dom2)
 variables = ((x[1], x[2], x[3]), (x[4], x[5], x[6]))
 
 pure, prob = run_experiment_solve(-payoff, domains, variables; iterations=15)
+
+println("Example: Find equilibrium")
 clean_print(pure, prob)
