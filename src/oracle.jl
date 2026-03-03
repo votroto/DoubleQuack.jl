@@ -17,30 +17,6 @@ function feasible_init_one(
     [tuple(value.(x)...)]
 end
 
-function feasible_init(
-    dom_nneg::NTuple{N,Function},
-    dom_null::NTuple{N,Function},
-    dims::NTuple{N,Int}
-) where {N}
-    ntuple(i -> feasible_init_one(dom_nneg[i], dom_null[i], dims[i]), N)
-end
-
-function oracle(
-    payoffs::NTuple{N,Function},
-    dom_nneg::NTuple{N,Function},
-    dom_null::NTuple{N,Function},
-    actions::NTuple{N,AbstractVector},
-    weights::NTuple{N}
-) where {N}
-    slice = unilateral_payoffs_continuous(payoffs, actions, weights)
-    improved = ntuple(i -> best_response(slice[i], dom_nneg[i], dom_null[i], last(actions[i])), N)
-
-    maxes = ntuple(i -> improved[i][1], N)
-    acts = ntuple(i -> improved[i][2], N)
-
-    maxes, acts
-end
-
 function best_response(
     payoff::Function,
     dom_nneg::Function,
@@ -63,4 +39,29 @@ function best_response(
     else
         NaN
     end
+end
+
+function feasible_init(
+    dom_nneg::NTuple{N,Function},
+    dom_null::NTuple{N,Function},
+    dims::NTuple{N,Int}
+) where {N}
+    ntuple(i -> feasible_init_one(dom_nneg[i], dom_null[i], dims[i]), N)
+end
+
+function oracle(
+    payoff::Function,
+    dom_nneg::NTuple{2,Function},
+    dom_null::NTuple{2,Function},
+    actions::NTuple{2,AbstractVector},
+    weights::NTuple{2}
+)
+    payoffs = (payoff, (x,y) -> -payoff(x,y))
+    slice = unilateral_payoffs_continuous(payoffs, actions, weights)
+    improved = ntuple(i -> best_response(slice[i], dom_nneg[i], dom_null[i], last(actions[i])), 2)
+
+    maxes = ntuple(i -> improved[i][1], 2)
+    acts = ntuple(i -> improved[i][2], 2)
+
+    maxes, acts
 end

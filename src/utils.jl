@@ -1,3 +1,5 @@
+using Printf
+
 function max_incentive(_, _, values::NTuple{N,F}, best::NTuple{N,F}) where {N,F}
     incentive_max = typemin(F)
     for i in eachindex(values)
@@ -40,4 +42,31 @@ function epspush(xs::Vector{NTuple{N, F}}, y; eps=1e-6) where {N,F}
     push!(ys, y)
 
     ys
+end
+
+function clean_print_strat(pures::Vector{<:NTuple{N}}, probs) where N
+    function centeri(j)
+        total = sum(probs[i] * pures[i][j] for i in eachindex(probs))
+        round(total; digits=3)
+    end
+
+    println("Centered at ", ntuple(centeri, N), ":")
+
+    perm = sortperm(probs; rev=true)
+
+    for i in perm
+        if probs[i] < 5e-4
+            break
+        end
+
+        @printf "%10.1f%% %s\n" probs[i]*100 round.(pures[i], digits=3)
+    end
+end
+
+function clean_print(puress, probss)
+    print("Player 1 - ")
+    clean_print_strat(puress[1], probss[1])
+    println()
+    print("Player 2 - ")
+    clean_print_strat(puress[2], probss[2])
 end
