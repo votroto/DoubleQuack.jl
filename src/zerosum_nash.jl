@@ -1,8 +1,18 @@
 using JuMP
-using MosekTools
+#using Gurobi
+using SCIP
 
-_OPT_ATTRS = (MOI.Silent() => true,)
-_DEFAULT_OPTIMIZER = optimizer_with_attributes(Mosek.Optimizer, _OPT_ATTRS...)
+#const GRB_ENV_REF = Ref{Gurobi.Env}()
+#
+#function __init__()
+#    # Reuse environment between solves
+#    global GRB_ENV_REF
+#    GRB_ENV_REF[] = Gurobi.Env()
+#    return
+#end
+#
+#_default_optimizer() = Gurobi.Optimizer(GRB_ENV_REF[])
+_default_optimizer() = SCIP.Optimizer()
 
 """
     nash_equilibrium(payoffs::NTuple{1}; optimizer)
@@ -12,7 +22,7 @@ Compute the nash equilibrium for a two-player zero-sum game.
 Returns:
     values, mixed strategies
 """
-function nash_equilibrium(payoff; optimizer=_DEFAULT_OPTIMIZER)
+function nash_equilibrium(payoff; optimizer=_default_optimizer)
     axis = axes(payoff, 1)
 
     model = Model(optimizer)
