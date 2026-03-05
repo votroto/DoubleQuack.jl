@@ -50,13 +50,12 @@ function feasible_init(
 end
 
 function oracle(
-    payoff::Function,
+    payoffs::NTuple{2,Function},
     dom_nneg::NTuple{2,Function},
     dom_null::NTuple{2,Function},
     actions::NTuple{2,AbstractVector},
     weights::NTuple{2}
 )
-    payoffs = (payoff, (x,y) -> -payoff(x,y))
     slice = unilateral_payoffs_continuous(payoffs, actions, weights)
     improved = ntuple(i -> best_response(slice[i], dom_nneg[i], dom_null[i], last(actions[i])), 2)
 

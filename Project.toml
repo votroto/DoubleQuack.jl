@@ -1,7 +1,7 @@
 name = "DoubleQuack"
 uuid = "734cdf24-183b-4137-bf13-fc8b8fc2f796"
 authors = ["Tomas Votroubek <tomas.votroubek@outlook.com>"]
-version = "1.0.0"
+version = "2.0.0"
 
 [deps]
 Gurobi = "2e9cd046-0924-5485-92f1-d5272153d98b"

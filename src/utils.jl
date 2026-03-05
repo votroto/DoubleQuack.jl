@@ -1,6 +1,6 @@
 using Printf
 
-function max_incentive(_, _, values::NTuple{N,F}, best::NTuple{N,F}) where {N,F}
+function max_incentive(values::NTuple{N,F}, best::NTuple{N,F}) where {N,F}
     incentive_max = typemin(F)
     for i in eachindex(values)
         incentive_i = best[i] - values[i]
@@ -28,12 +28,12 @@ function unilateral_payoffs_continuous(
     ntuple(i -> x -> deviation(i, x), N)
 end
 
-function epspush(xs::Vector{NTuple{N, F}}, y; eps=1e-6) where {N,F}
+function epspush(xs::Vector{NTuple{N, F}}, y; delta=1e-6) where {N,F}
     ys = NTuple{N, F}[]
     for x in xs
         cont = false
         for i in 1:N
-            cont |= !isapprox(x[i], y[i]; rtol=eps)
+            cont |= !isapprox(x[i], y[i]; rtol=delta)
         end
         if cont
             push!(ys, x)
@@ -63,10 +63,9 @@ function clean_print_strat(pures::Vector{<:NTuple{N}}, probs) where N
     end
 end
 
-function clean_print(puress, probss)
-    print("Player 1 - ")
-    clean_print_strat(puress[1], probss[1])
-    println()
-    print("Player 2 - ")
-    clean_print_strat(puress[2], probss[2])
+function clean_print(puress::NTuple{N}, probss::NTuple{N}) where {N}
+    for i in 1:N
+        print("Player $i - ")
+        clean_print_strat(puress[i], probss[i])
+    end
 end
