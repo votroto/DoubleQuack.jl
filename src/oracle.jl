@@ -14,7 +14,11 @@ function feasible_init_one(
 
     optimize!(m)
 
-    [tuple(value.(x)...)]
+    if JuMP.termination_status(m) == JuMP.MOI.OPTIMAL
+        [tuple(value.(x)...)]
+    else
+        nothing
+    end
 end
 
 function best_response(
@@ -37,7 +41,7 @@ function best_response(
     if JuMP.termination_status(m) == JuMP.MOI.OPTIMAL
         objective_value(m), tuple(value.(x)...)
     else
-        NaN
+        nothing, nothing
     end
 end
 
@@ -50,17 +54,17 @@ function feasible_init(
 end
 
 function oracle(
-    payoffs::NTuple{2,Function},
-    dom_nneg::NTuple{2,Function},
-    dom_null::NTuple{2,Function},
-    actions::NTuple{2,AbstractVector},
-    weights::NTuple{2}
-)
+    payoffs::NTuple{N,Function},
+    dom_nneg::NTuple{N,Function},
+    dom_null::NTuple{N,Function},
+    actions::NTuple{N,AbstractVector},
+    weights::NTuple{N}
+) where {N}
     slice = unilateral_payoffs_continuous(payoffs, actions, weights)
-    improved = ntuple(i -> best_response(slice[i], dom_nneg[i], dom_null[i], last(actions[i])), 2)
+    improved = ntuple(i -> best_response(slice[i], dom_nneg[i], dom_null[i], last(actions[i])), N)
 
-    maxes = ntuple(i -> improved[i][1], 2)
-    acts = ntuple(i -> improved[i][2], 2)
+    maxes = ntuple(i -> improved[i][1], N)
+    acts = ntuple(i -> improved[i][2], N)
 
     maxes, acts
 end

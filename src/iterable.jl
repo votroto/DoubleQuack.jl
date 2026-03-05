@@ -3,7 +3,7 @@ function solve(
         eps=1e-4,
         max_iters=100,
         delta=1e-6,
-        start=feasible_init(g.set_nneg, g.set_null, g.dimensions),
+        start::NTuple{N}=feasible_init(g.set_nneg, g.set_null, g.dimensions),
 ) where {N}
     actions = start
     payoffs, dom_nneg, dom_null = g.utilities, g.set_nneg, g.set_null
@@ -11,7 +11,7 @@ function solve(
     for i in 0:max_iters
         values, mixed = equilibrium(payoffs, actions)
         best, responses = oracle(payoffs, dom_nneg, dom_null, actions, mixed)
-        extended = epspush.(actions, responses; delta=1e-6)
+        extended = epspush.(actions, responses; delta)
 
         exploitability = max_incentive(values, best)
         if exploitability <= eps

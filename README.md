@@ -7,6 +7,14 @@ Install the package directly from Github. Open `Pkg` mode with `]`, then
 add https://github.com/votroto/DoubleQuack.jl.git
 ```
 
+### Gurobi
+This package uses Gurobi. You need a valid license to use it.
+Supress debugging output by creating `gurobi.env` in your current folder, and paste into it the settings:
+```
+OutputFlag 0
+LogToConsole 0
+```
+
 ## Model 1: Nie 2021, Example 6.1.(i)
 Consider the following two-player zero-sum continuous game with $3\times 3$ variables, where Player 1 has the following loss function:
 $$l_1(\mathbf{x}, \mathbf{y}) = x_1x_2 + x_2x_3 + x_3y_1 + x_1y_3 + y_1y_2 + y_2y_3$$

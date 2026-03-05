@@ -44,12 +44,11 @@ end
 macro game(args...)
     vars = args[1:end-1]
     util = args[end]
-    n = length(vars)
 
     params = [var.args[1] for var in vars]
     dimensions = [var.args[2] for var in vars]
     symbols = [QuoteNode(var.args[1]) for var in vars]
-    utilities = [:(($(params...),) -> $e) for e in util.args if e isa Expr]
+    utilities = [esc(:(($(params...),) -> $e)) for e in util.args if e isa Expr]
 
     if length(vars) != length(utilities)
         error("Number of variables and utilities must be equal.")

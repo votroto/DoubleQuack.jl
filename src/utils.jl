@@ -44,7 +44,7 @@ function epspush(xs::Vector{NTuple{N, F}}, y; delta=1e-6) where {N,F}
     ys
 end
 
-function clean_print_strat(pures::Vector{<:NTuple{N}}, probs) where N
+function clean_print_strategy(pures::Vector{<:NTuple{N}}, probs) where N
     function centeri(j)
         total = sum(probs[i] * pures[i][j] for i in eachindex(probs))
         round(total; digits=3)
@@ -63,9 +63,10 @@ function clean_print_strat(pures::Vector{<:NTuple{N}}, probs) where N
     end
 end
 
-function clean_print(puress::NTuple{N}, probss::NTuple{N}) where {N}
+function clean_print_ne((actions, mixed, _, _))
+    N = length(actions)
     for i in 1:N
         print("Player $i - ")
-        clean_print_strat(puress[i], probss[i])
+        clean_print_strategy(actions[i], mixed[i])
     end
 end
