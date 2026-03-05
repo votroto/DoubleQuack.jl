@@ -47,9 +47,11 @@ end
 The game has a known saddle point at $x^\star = (0, 1, 0)$ and $y^\star = (0.25, 0.5, 0.25)$.
 
 ## Model 2: Stein 2008, Example 2.3
-Consider the following two-player general-sum continuous game with $1\times 1$ variables, where Player 1 has the utility function:
+Consider the following two-player general-sum continuous game with $1\times 1$ variables, where the utility function are:
 
-$u_1(\mathbf{x}, \mathbf{y}) = 0.2x_1y_1 - \cos(y_1)$
+$u_1(\mathbf{x}, \mathbf{y}) = 2x_1y_1 + 3y_1^3 - 2x_1^3 - x_1 - 3x_1^2y_1^2$
+
+$u_2(\mathbf{x}, \mathbf{y}) = 2x_1^2y_1^2 - 4y_1^3 - x_1^2 + 4y_1 + x_1^2y_1$
 
 The strategy spaces are: $-1 \leq x_1 \leq 1$ and $-1 \leq y_1 \leq 1$.
 
