@@ -68,3 +68,8 @@ function oracle(
 
     maxes, acts
 end
+
+function oracle(payoff::NTuple{1,Function}, args...)
+    payoffs = (only(payoff), (vars...) -> -only(payoff)(vars...))
+    oracle(payoffs, args...)
+end
