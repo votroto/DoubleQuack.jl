@@ -1,5 +1,3 @@
-using Revise
-
 include("../src/DoubleQuack.jl")
 using Main.DoubleQuack
 

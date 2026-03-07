@@ -1,16 +1,14 @@
+
 function ex_parrilo06_2_1()
     # Example 2.1
     # mixed NE
     # (1.0,), 50.0 %; (-1.0,), 50.0 %;
     # (0.0,), 100.0 %;
 
-    g = @game x{1} y{1} begin
+    g = @game (x{1}, y{1}) begin
         (x[1] - y[1])^2
     end
-    @strategy_set g x y as v in begin
-        v .<= 1
-        v .>= -1
-    end
+    @strategy_set g (x, y) in [-1, 1]
 
     g
 end
@@ -21,13 +19,10 @@ function ex_parrilo06_3_1()
     # (4^(-2/4),), 100.0 %;
     # (4^(-1/4),), 100.0 %;
 
-    g = @game x{1} y{1} begin
+    g = @game (x{1}, y{1}) begin
         2 * x[1] * y[1]^2 - x[1]^2 - y[1]
     end
-    @strategy_set g x y as v in begin
-        v .<= 1
-        v .>= -1
-    end
+    @strategy_set g (x, y) in [-1, 1]
 
     g
 end
@@ -40,13 +35,10 @@ function ex_parrilo06_3_2()
 
     u(x, y) = 5 * x * y - 2 * x^2 - 2 * x * y^2 - y
 
-    g = @game x{1} y{1} begin
+    g = @game (x{1}, y{1}) begin
         u(x[1], y[1])
     end
-    @strategy_set g x y as v in begin
-        v .<= 1
-        v .>= -1
-    end
+    @strategy_set g (x, y) in [-1,1]
 
     g
 end
@@ -54,10 +46,10 @@ end
 function ex_nie21_6_1_i()
     l(x, y) = x[1]x[2] + x[2]x[3] + x[3]y[1] + x[1]y[3] + y[1]y[2] + y[2]y[3]
 
-    g = @game x{3} y{3} begin
+    g = @game (x{3}, y{3}) begin
         -l(x, y)
     end
-    @strategy_set g x y as v in begin
+    @strategy_set g (x, y) as v in begin
         v .>= 0
         sum(v) == 1
     end
@@ -68,17 +60,11 @@ end
 function ex_razaviyayn20_5_1()
     u(x, y) = 0.2 * x * y - cos(y)
 
-    g = @game x{1} y{1} begin
+    g = @game (x{1}, y{1}) begin
         u(x[1], y[1])
     end
-    @strategy_set g x begin
-        x[1] >= -1
-        x[1] <= 1
-    end
-    @strategy_set g y begin
-        y[1] >= -2π
-        y[1] <= 2π
-    end
+    @strategy_set g x in [-1, 1]
+    @strategy_set g y in [-2π, 2π]
 
     g
 end
@@ -88,19 +74,29 @@ function ex_stein08_2_3()
     # (-1.0,), 55.32 %; (0.1149,), 44.68 %;
     # (0.7166,), 100 %;
 
-    g = @game x{1} y{1} begin
+    g = @game (x{1}, y{1}) begin
         2 * x[1] * y[1] + 3y[1]^3 - 2x[1]^3 - x[1] - 3x[1]^2 * y[1]^2
         2x[1]^2 * y[1]^2 - 4y[1]^3 - x[1]^2 + 4y[1] + x[1]^2 * y[1]
     end
-    @strategy_set g x y as v in begin
-        v[1] >= -1
-        v[1] <= 1
-    end
+    @strategy_set g (x, y) in [-1, 1]
 
     g
 end
 
+
+#=
+@macroexpand @game (x{2}, y{3}, z{1}) begin
+    x[1]*x[2] - y[1]*y[3] + z[1]
+    y[1]*y[2] - cos(x[2]) + z[1]
+    y[1]*y[3] - z[1]^2
+end with (x, y) as v in begin
+    sum(v) == 1
+    v .>= 0
+end with z in [-2π, 2π]
+=#
+
 ne_parrilo06_2_1 = solve(ex_parrilo06_2_1(), eps=1e-3, max_iters=20)
+
 ne_parrilo06_3_1 = solve(ex_parrilo06_3_1(), eps=1e-3, max_iters=20)
 ne_parrilo06_3_2 = solve(ex_parrilo06_3_2(), eps=1e-3, max_iters=20)
 ne_nie21_6_1_i = solve(ex_nie21_6_1_i(), eps=1e-3, max_iters=20)
