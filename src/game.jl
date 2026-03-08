@@ -9,10 +9,10 @@ end
 function Game(
     dimensions::NTuple{P, Int},
     variables::NTuple{P, Symbol},
-    utilities::NTuple{U, Function},
-    set_nneg::NTuple{P, Function} = ntuple(_ -> (_ -> 1), P),
-    set_null::NTuple{P, Function} = ntuple(_ -> (_ -> 0), P)
+    utilities::NTuple{U, Function}
 ) where {P, U}
+    set_nneg = ntuple(_ -> (_ -> 1), P)
+    set_null  = ntuple(_ -> (_ -> 0), P)
     return Game{P, U}(dimensions, variables, utilities, set_nneg, set_null)
 end
 
@@ -38,45 +38,8 @@ function game_set_null!(game, var_name::Symbol, null)
     game.set_null = tuple_set_idx(game.set_null, null, pid)
 end
 
-macro strategy_set(game, args...)
-    vars, nneg_lambda, null_lambda = parse_cset(args)
-
-    Expr(:block, [
-        :(game_set_nneg!($(esc(game)), $(QuoteNode(var)), $nneg_lambda))
-        for var in vars
-    ]..., [
-        :(game_set_null!($(esc(game)), $(QuoteNode(var)), $null_lambda))
-        for var in vars
-    ]...)
-end
-
-function split_array(arr, by)
-    result = []
-    sub = []
-
-    for item in arr
-        if item == by
-            if !isempty(sub)
-                push!(result, sub)
-                sub = []
-            end
-        else
-            push!(sub, item)
-        end
-    end
-    if !isempty(sub)
-        push!(result, sub)
-    end
-
-    return result
-end
-
-
-function __parse_strategy_set(bind, set)
-    @show bind
+function __parse_strategy_set(bind, set::Expr)
     constr_expr(dotted, e1, e2) = dotted ? :(($e1 .- $e2)...) : :($e1 - $e2)
-
-    @assert set isa Expr
 
     nneg_exprs = Any[1]
     null_exprs = Any[0]
@@ -117,53 +80,53 @@ function __parse_strategy_set(bind, set)
     nneg_lambda, null_lambda
 end
 
-function parse_cset(c)
+function __strategy_set(vinset::Expr)
     # kingdom for a pattern match!
+    @assert (vinset.head == :call && vinset.args[1] == :in && length(vinset.args) == 3) "Did not understand constraint $vinset"
+    _in, _vs, _set = vinset.args
     vars, bnd, set =
-        if length(c) == 1 && c[1].head == :call && c[1].args[1] == :in && length(c[1].args) == 3 && c[1].args[2] isa Symbol
-            [c[1].args[2]], c[1].args[2], c[1].args[3]
-        elseif length(c) == 1 && c[1].head == :call && c[1].args[1] == :in && length(c[1].args) == 3 && c[1].args[2] isa Expr && c[1].args[2].head == :tuple
-            c[1].args[2].args, first(c[1].args[2].args), c[1].args[3]
-        elseif length(c) == 3 && c[2] == :as && c[3].head == :call && c[3].args[1] == :in && c[1].head == :tuple
-            c[1].args, c[3].args[2], c[3].args[3]
+        if _vs isa Symbol
+            [_vs], _vs, _set
+        elseif _vs isa Expr && _vs.head == :tuple
+            _vs.args, :fakevar, _set
         else
-            error("Did not understand constraint $c")
+            error("Could not parse variables in $vinset")
         end
     nn, nu = __parse_strategy_set(bnd, set)
 
     vars, nn, nu
 end
 
-function parse_direct_constrs(syms, constr_arg)
-    nneg_dict = Dict{Symbol, Any}()
-    null_dict = Dict{Symbol, Any}()
-    for c in split_array(constr_arg, :with)
-        vars, nn, nu = parse_cset(c)
-        for v in vars
-            nneg_dict[v] = nn
-            null_dict[v] = nu
-        end
-    end
+function __strategy_set(vars, _as, vinset::Expr)
+    @assert (_as == :as && vinset.head == :call && vinset.args[1] == :in && vars.head == :tuple) "Did not understand constraint $vars $_as $vinset"
+    vs, bnd, set = vars.args, vinset.args[2], vinset.args[3]
+    nn, nu = __parse_strategy_set(bnd, set)
 
-    nneg_dict, null_dict
+    vs, nn, nu
 end
 
-macro game(var_arg, util_arg, constr_arg...)
+macro strategy_set(game, args...)
+    vars, nneg_lambda, null_lambda = __strategy_set(args...)
+
+    Expr(:block, [
+        :(game_set_nneg!($(esc(game)), $(QuoteNode(var)), $nneg_lambda))
+        for var in vars
+    ]..., [
+        :(game_set_null!($(esc(game)), $(QuoteNode(var)), $null_lambda))
+        for var in vars
+    ]...)
+end
+
+macro game(var_arg, util_arg)
     @assert var_arg.head == :tuple
 
     params = [var.args[1] for var in var_arg.args]
     dims = [var.args[2] for var in var_arg.args]
     syms = [QuoteNode(var.args[1]) for var in var_arg.args]
     utils = [esc(:(($(params...),) -> $e)) for e in util_arg.args if e isa Expr]
-    nn, nu = parse_direct_constrs(params, constr_arg)
 
-    @show nneg_tuple = ntuple(i -> get(nn, params[i], :(_ -> 1)), length(syms))
-    @show null_tuple = ntuple(i -> get(nu, params[i], :(_ -> 0)), length(syms))
+    @assert length(syms) >= 1 "Games must have at least two variables"
+    @assert (length(syms) == length(utils) || length(syms) == 2 && length(utils) == 1) "General-sum games must have the same number of variables and utilities, while zero-sum two-player games must have 2 and 1."
 
-
-    if (length(syms) != length(utils) && length(syms) != 2 && length(utils) != 1) || length(syms) <= 1
-        error("General-sum games must have at least two variables and a matching number of utilities, while zero-sum two player games must have 2 and 1.")
-    end
-
-    return :(Game(($(dims...),), ($(syms...),), ($(utils...),), ($(nneg_tuple...),), ($(null_tuple...),)))
+    return :(Game(($(dims...),), ($(syms...),), ($(utils...),)))
 end

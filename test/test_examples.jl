@@ -95,6 +95,7 @@ end with (x, y) as v in begin
 end with z in [-2π, 2π]
 =#
 
+#=
 ne_parrilo06_2_1 = solve(ex_parrilo06_2_1(), eps=1e-3, max_iters=20)
 
 ne_parrilo06_3_1 = solve(ex_parrilo06_3_1(), eps=1e-3, max_iters=20)
@@ -107,3 +108,4 @@ DoubleQuack.clean_print_ne(ne_parrilo06_3_1)
 DoubleQuack.clean_print_ne(ne_parrilo06_3_2)
 DoubleQuack.clean_print_ne(ne_nie21_6_1_i)
 DoubleQuack.clean_print_ne(ne_razaviyayn20_5_1)
+=#
