@@ -38,95 +38,161 @@ function game_set_null!(game, var_name::Symbol, null)
     game.set_null = tuple_set_idx(game.set_null, null, pid)
 end
 
-function __parse_strategy_set(bind, set::Expr)
-    constr_expr(dotted, e1, e2) = dotted ? :(($e1 .- $e2)...) : :($e1 - $e2)
+function _parse_strategy_set(bind, set::Expr)
+    _undot(s) = startswith(s, ".") ? (true, Symbol(s[2:end])) : (false, Symbol(s))
+    _constr(dotted, lhs, rhs) = dotted ? :(($lhs .- $rhs)...) : :($lhs - $rhs)
 
     nneg_exprs = Any[1]
     null_exprs = Any[0]
 
-    if set.head == :block
+    if Meta.isexpr(set, :block)
         for ex in set.args
-            ex isa LineNumberNode && continue
-
-            if !(ex isa Expr && ex.head == :call)
-                error("Expected comparison expression, got $ex")
+            if (ex isa LineNumberNode)
+                continue
+            end
+            if !(Meta.isexpr(ex, :call))
+                error("Expected a comparison expression, got: $ex")
             end
 
-            op, lhs, rhs = ex.args
-            dotted = op isa Symbol && startswith(String(op), ".")
-            baseop = dotted ? Symbol(String(op)[2:end]) : op
+            dotted, base = _undot(String(ex.args[1]))
+            lhs, rhs     = ex.args[2], ex.args[3]
 
-            if baseop == :(>=)
-                push!(nneg_exprs, constr_expr(dotted, lhs, rhs))
-            elseif baseop == :(<=)
-                push!(nneg_exprs, constr_expr(dotted, rhs, lhs))
-            elseif baseop == :(==)
-                push!(null_exprs, constr_expr(dotted, lhs, rhs))
+            if base == :(>=)
+                push!(nneg_exprs, _constr(dotted, lhs, rhs))
+            elseif base == :(<=)
+                push!(nneg_exprs, _constr(dotted, rhs, lhs))
+            elseif base == :(==)
+                push!(null_exprs, _constr(dotted, lhs, rhs))
             else
-                error("Unsupported constraint: $ex.")
+                error("Unsupported constraint operator '$base' in: $ex")
             end
         end
-    elseif set.head == :vect && length(set.args) == 2
+
+    elseif Meta.isexpr(set, :vect) && length(set.args) == 2
         lo, hi = set.args
         push!(nneg_exprs, :(($bind .- $(esc(lo)))...))
         push!(nneg_exprs, :(($(esc(hi)) .- $bind)...))
+
     else
-        error("Did not understand strategy set definition.")
+        error("Could not parse strategy set: $set")
     end
 
     nneg_lambda = :($bind -> tuple($(nneg_exprs...)))
     null_lambda = :($bind -> tuple($(null_exprs...)))
-
     nneg_lambda, null_lambda
 end
 
-function __strategy_set(vinset::Expr)
-    # kingdom for a pattern match!
-    @assert (vinset.head == :call && vinset.args[1] == :in && length(vinset.args) == 3) "Did not understand constraint $vinset"
-    _in, _vs, _set = vinset.args
-    vars, bnd, set =
-        if _vs isa Symbol
-            [_vs], _vs, _set
-        elseif _vs isa Expr && _vs.head == :tuple
-            _vs.args, :fakevar, _set
-        else
-            error("Could not parse variables in $vinset")
-        end
-    nn, nu = __parse_strategy_set(bnd, set)
+function _strategy_set(vinset::Expr)
+    if !(Meta.isexpr(vinset, :call, 3) && vinset.args[1] == :in)
+        error("Expected `var in set`, got: $vinset")
+    end
 
-    vars, nn, nu
+    _, vs_expr, set = vinset.args
+
+    if vs_expr isa Symbol
+        nn, nu = _parse_strategy_set(vs_expr, set)
+        return [vs_expr], nn, nu
+    elseif Meta.isexpr(vs_expr, :tuple)
+        nn, nu = _parse_strategy_set(:_bind, set)
+        return vs_expr.args, nn, nu
+    else
+        error("Could not parse variable(s) in: $vinset")
+    end
 end
 
-function __strategy_set(vars, _as, vinset::Expr)
-    @assert (_as == :as && vinset.head == :call && vinset.args[1] == :in && vars.head == :tuple) "Did not understand constraint $vars $_as $vinset"
-    vs, bnd, set = vars.args, vinset.args[2], vinset.args[3]
-    nn, nu = __parse_strategy_set(bnd, set)
+function _strategy_set(vars_expr::Expr, as_kw::Symbol, vinset::Expr)
+    if !(as_kw == :as && Meta.isexpr(vars_expr, :tuple) && Meta.isexpr(vinset, :call, 3) && vinset.args[1] == :in)
+        error("Expected `(vars...) as bind in set`, got: $vars_expr $as_kw $vinset")
+    end
 
-    vs, nn, nu
+    _, bind, set = vinset.args
+    nn, nu = _parse_strategy_set(bind, set)
+    vars_expr.args, nn, nu
 end
 
+
+"""
+    @strategy_set game var begin
+        constraint₁
+        constraint₂
+        ...
+    end
+    @strategy_set game var [lo, hi]
+    @strategy_set game (var₁, var₂, ...) as bind in begin ... end
+
+Attach a strategy set (feasible region) to one or more players in `game`.
+
+The constraint block may contain any combination of:
+- `expr >= rhs` — non-negativity constraint (`expr - rhs ≥ 0`)
+- `expr <= rhs` — non-negativity constraint (`rhs - expr ≥ 0`)
+- `expr == rhs` — equality constraint (`expr - rhs = 0`)
+
+Dotted broadcast forms (`.>=`, `.<=`, `.==`) are also supported and are
+splatted into element-wise constraints.
+
+The shorthand `[lo, hi]` form is equivalent to `var .>= lo; var .<= hi`.
+
+When multiple players share the same constraint structure, use the `as` form
+to name the lambda parameter explicitly and apply it to all listed variables at
+once.
+
+# Examples
+
+**Box** strategy set using the shorthand range form:
+```julia
+@strategy_set g x in [-1, 1]
+```
+
+**Shared** constraint applied to multiple players at once:
+```julia
+@strategy_set g (x, y) as v in begin
+    v .>= 0
+    sum(v) == 1
+end
+```
+"""
 macro strategy_set(game, args...)
-    vars, nneg_lambda, null_lambda = __strategy_set(args...)
+    vars, nneg_lambda, null_lambda = _strategy_set(args...)
 
-    Expr(:block, [
-        :(game_set_nneg!($(esc(game)), $(QuoteNode(var)), $nneg_lambda))
-        for var in vars
-    ]..., [
-        :(game_set_null!($(esc(game)), $(QuoteNode(var)), $null_lambda))
-        for var in vars
-    ]...)
+    Expr(:block,
+        [:(game_set_nneg!($(esc(game)), $(QuoteNode(v)), $nneg_lambda)) for v in vars]...,
+        [:(game_set_null!($(esc(game)), $(QuoteNode(v)), $null_lambda)) for v in vars]...
+    )
 end
 
+
+"""
+    @game (var₁{dim₁}, var₂{dim₂}, ...) begin
+        utility₁(var₁, var₂, ...)
+        utility₂(var₁, var₂, ...)
+        ...
+    end
+
+Construct a continuous `Game` from a tuple of named vector variables and a
+block of utility functions.
+
+Each variable declaration `var{dim}` introduces a player whose strategy is a
+vector of length `dim`. The utility block must contain one expression per
+player (general-sum), or exactly one expression for a two-player zero-sum game
+— in which case the second player's utility is taken to be its negation.
+
+All variables are in scope as positional arguments inside every utility
+expression.
+"""
 macro game(var_arg, util_arg)
-    @assert var_arg.head == :tuple
+    if !(Meta.isexpr(var_arg, :tuple) && Meta.isexpr(util_arg, :block))
+        error("Game arguments must be a tuple of variables followed by a block of utilities.")
+    end
 
-    params = [var.args[1] for var in var_arg.args]
-    dims = [var.args[2] for var in var_arg.args]
-    syms = [QuoteNode(var.args[1]) for var in var_arg.args]
-    utils = [esc(:(($(params...),) -> $e)) for e in util_arg.args if e isa Expr]
+    params = [v.args[1] for v in var_arg.args]
+    dims   = [v.args[2] for v in var_arg.args]
+    syms   = [QuoteNode(p) for p in params]
+    utils  = [esc(:(($(params...),) -> $e)) for e in util_arg.args if e isa Expr]
 
-    @assert length(syms) >= 1 "Games must have at least two variables"
-    @assert (length(syms) == length(utils) || length(syms) == 2 && length(utils) == 1) "General-sum games must have the same number of variables and utilities, while zero-sum two-player games must have 2 and 1."
+    nv, nu = length(syms), length(utils)
+    if !(nv >= 1 && (nv == nu || nv == 2 && nu == 1))
+        error("General-sum games need one utility per variable; zero-sum two-player games need exactly one utility.")
+    end
 
-    return :(Game(($(dims...),), ($(syms...),), ($(utils...),)))
+    :(Game(($(dims...),), ($(syms...),), ($(utils...),)))
 end

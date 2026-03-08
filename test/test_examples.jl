@@ -83,29 +83,16 @@ function ex_stein08_2_3()
     g
 end
 
-
-#=
-@macroexpand @game (x{2}, y{3}, z{1}) begin
-    x[1]*x[2] - y[1]*y[3] + z[1]
-    y[1]*y[2] - cos(x[2]) + z[1]
-    y[1]*y[3] - z[1]^2
-end with (x, y) as v in begin
-    sum(v) == 1
-    v .>= 0
-end with z in [-2π, 2π]
-=#
-
-#=
 ne_parrilo06_2_1 = solve(ex_parrilo06_2_1(), eps=1e-3, max_iters=20)
-
 ne_parrilo06_3_1 = solve(ex_parrilo06_3_1(), eps=1e-3, max_iters=20)
 ne_parrilo06_3_2 = solve(ex_parrilo06_3_2(), eps=1e-3, max_iters=20)
 ne_nie21_6_1_i = solve(ex_nie21_6_1_i(), eps=1e-3, max_iters=20)
 ne_razaviyayn20_5_1 = solve(ex_razaviyayn20_5_1(), eps=1e-3, max_iters=20)
+ne_stein08_2_3 = solve(ex_stein08_2_3(), eps=1e-3, max_iters=20)
 
 DoubleQuack.clean_print_ne(ne_parrilo06_2_1)
 DoubleQuack.clean_print_ne(ne_parrilo06_3_1)
 DoubleQuack.clean_print_ne(ne_parrilo06_3_2)
 DoubleQuack.clean_print_ne(ne_nie21_6_1_i)
 DoubleQuack.clean_print_ne(ne_razaviyayn20_5_1)
-=#
+DoubleQuack.clean_print_ne(ne_stein08_2_3)
