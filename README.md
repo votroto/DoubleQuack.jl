@@ -32,15 +32,10 @@ l(x, y) = x[1]x[2] + x[2]x[3] + x[3]y[1] + x[1]y[3] + y[1]y[2] + y[2]y[3]
 
 g = @game x{3} y{3} begin
     -l(x, y)
-    l(x, y)
 end
-@strategy_set g x begin
-    x .>= 0
-    sum(x) == 1
-end
-@strategy_set g y begin
-    y .>= 0
-    sum(y) == 1
+@strategy_set g (x, y) as v in begin
+    v .>= 0
+    sum(v) == 1
 end
 ```
 
@@ -61,14 +56,7 @@ g = @game x{1} y{1} begin
     2 * x[1] * y[1] + 3y[1]^3 - 2x[1]^3 - x[1] - 3x[1]^2 * y[1]^2
     2x[1]^2 * y[1]^2 - 4y[1]^3 - x[1]^2 + 4y[1] + x[1]^2 * y[1]
 end
-@strategy_set g x begin
-    x[1] >= -1
-    x[1] <= 1
-end
-@strategy_set g y begin
-    y[1] >= -1
-    y[1] <= 1
-end
+@strategy_set g (x, y) in [-1, 1]
 ```
 
 ## Experiment
